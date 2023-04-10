@@ -32,6 +32,9 @@
       const response = await fetch("/sounds", { method: "POST", body: data });
       window.location.reload();
     }
+    async function play_audio(timestamp) {
+      const response = await fetch("/play?timestamp=" + timestamp);
+    }
     </script>
     <style>
     input { width: 100%; }

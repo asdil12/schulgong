@@ -43,6 +43,10 @@
 #define DCF_PIN 13	         // Connection pin to DCF 77 device
 #define DCF_INTERRUPT 13		 // Interrupt number associated with pin
 
+#define I2S_DOUT      25
+#define I2S_BCLK      27
+#define I2S_LRC       26
+
 const char* ssid = "Schulgong";
 
 time_t prevDisplay = 0;          // when the digital clock was displayed
@@ -52,6 +56,7 @@ time_t lastSync = 0;
 DCF77 DCF = DCF77(DCF_PIN, DCF_INTERRUPT);
 DNSServer dnsServer;
 AsyncWebServer server(80);
+Audio audio;
 
 
 time_t getDCFTime() { 
@@ -165,6 +170,15 @@ String read_file(File file){
   return content;
 }
 
+void play_audio(String timestamp) {
+  String volume_str = read_file("/scvolume/"+timestamp);
+  Serial.println("Volume: " + volume_str);
+  audio.setVolume(atoi(volume_str.c_str()));
+  String sound_path = "/sounds/" + read_file("/schedule/"+timestamp);
+  Serial.println("Soundfile: " + volume_str);
+  audio.connecttoSD(sound_path.c_str());
+}
+
 String get_schedule_web() {
   String sched_tbl;
   File schedule_dir = SD.open("/schedule");
@@ -178,7 +192,8 @@ String get_schedule_web() {
     String sound = read_file(file);
     String volume = read_file(String("/scvolume/")+basename);
     sched_tbl += "<tr><td>" + basename + "</td><td>" + sound + "</td><td>" + volume + "</td>";
-    sched_tbl += "<td><button type=\"button\" onclick=\"fill_sched_form('"+basename+"', '"+sound+"', '"+volume+"');\">Edit</button>&nbsp;";
+    sched_tbl += "<td><button type=\"button\" onclick=\"play_audio('"+basename+"');\">Play</button>&nbsp;";
+    sched_tbl += "<button type=\"button\" onclick=\"fill_sched_form('"+basename+"', '"+sound+"', '"+volume+"');\">Edit</button>&nbsp;";
     sched_tbl += "<button type=\"button\" onclick=\"del_sched('"+basename+"');\">Delete</button></tr>";
     file = schedule_dir.openNextFile();
   }
@@ -271,6 +286,16 @@ void init_wifi() {
     }
   });
 
+  server.on("/play", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("timestamp")) {
+      AsyncWebParameter* p = request->getParam("timestamp");
+      play_audio(p->value());
+      request->redirect("/");
+      return;
+    }
+    request->send(200, "text/plain", "error");
+  });
+
   server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request) {
     request->send(200);
   }, handle_upload);
@@ -299,6 +324,7 @@ void setup() {
   Serial.begin(9600);
 
   init_wifi();
+  audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
   init_dcf77_sync();
   init_sdcard();
 }
@@ -306,6 +332,7 @@ void setup() {
 
 void loop() {
   dnsServer.processNextRequest(); // this is hopefully non blocking
+  audio.loop();
 
   if (timeStatus() != timeNotSet) {
     if(now() != prevDisplay) //update the display only if the time has changed
@@ -356,4 +383,5 @@ void printDigits(int digits) {
     Serial.print('0');
   Serial.print(digits);
 }
+
 
