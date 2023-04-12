@@ -341,7 +341,6 @@ String format_timestamp(time_t ts) {
 }
 
 
-
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(9600);
@@ -352,56 +351,17 @@ void setup() {
   init_sdcard();
 }
 
-
 void loop() {
   dnsServer.processNextRequest(); // this is hopefully non blocking
   audio.loop();
 
   if (timeStatus() != timeNotSet) {
-    /*
-    if(now() != prevDisplay) //update the display only if the time has changed
-    {
-      prevDisplay = now();
-     digitalClockDisplay();  
-    }
-    */
-
     time_t t_now = now();
     String ts_now = format_timestamp(t_now);
     if (last_timestamp != ts_now) {
       last_timestamp = ts_now;
-      Serial.println(ts_now);
+      Serial.println("Current time: " + ts_now);
       play_audio(ts_now);
-    }
-    
+    } 
   }
 }
-
-
-
-
-/*
-void digitalClockDisplay() {
-  // digital clock display of the time
-  Serial.println("");
-  Serial.print(hour());
-  printDigits(minute());
-  printDigits(second());
-  Serial.print(" ");
-  Serial.print(day());
-  Serial.print(" ");
-  Serial.print(month());
-  Serial.print(" ");
-  Serial.print(year()); 
-  Serial.println(); 
-}
-
-void printDigits(int digits) {
-  // utility function for digital clock display: prints preceding colon and leading 0
-  Serial.print(":");
-  if(digits < 10)
-    Serial.print('0');
-  Serial.print(digits);
-}
-*/
-
