@@ -51,6 +51,7 @@ const char* ssid = "Schulgong";
 
 time_t prevDisplay = 0;          // when the digital clock was displayed
 time_t lastSync = 0;
+String last_timestamp = "";
 
 
 DCF77 DCF = DCF77(DCF_PIN, DCF_INTERRUPT);
@@ -171,11 +172,13 @@ String read_file(File file){
 }
 
 void play_audio(String timestamp) {
+  String sound_file = read_file("/schedule/"+timestamp);
+  if (sound_file.length() == 0) return;
+  String sound_path = "/sounds/" + read_file("/schedule/"+timestamp);
+  Serial.println("Soundfile: " + sound_path);
   String volume_str = read_file("/scvolume/"+timestamp);
   Serial.println("Volume: " + volume_str);
   audio.setVolume(atoi(volume_str.c_str()));
-  String sound_path = "/sounds/" + read_file("/schedule/"+timestamp);
-  Serial.println("Soundfile: " + volume_str);
   audio.connecttoSD(sound_path.c_str());
 }
 
@@ -319,30 +322,6 @@ void init_wifi() {
   server.begin();
 }
 
-void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);
-  Serial.begin(9600);
-
-  init_wifi();
-  audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
-  init_dcf77_sync();
-  init_sdcard();
-}
-
-
-void loop() {
-  dnsServer.processNextRequest(); // this is hopefully non blocking
-  audio.loop();
-
-  if (timeStatus() != timeNotSet) {
-    if(now() != prevDisplay) //update the display only if the time has changed
-    {
-      prevDisplay = now();
-     digitalClockDisplay();  
-    }
-  }
-}
-
 String format_timestamp(time_t ts) {
   char* dow_str = NULL;
   switch(weekday(ts)) {
@@ -361,6 +340,47 @@ String format_timestamp(time_t ts) {
   return String(timestr);
 }
 
+
+
+void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
+  Serial.begin(9600);
+
+  init_wifi();
+  audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
+  init_dcf77_sync();
+  init_sdcard();
+}
+
+
+void loop() {
+  dnsServer.processNextRequest(); // this is hopefully non blocking
+  audio.loop();
+
+  if (timeStatus() != timeNotSet) {
+    /*
+    if(now() != prevDisplay) //update the display only if the time has changed
+    {
+      prevDisplay = now();
+     digitalClockDisplay();  
+    }
+    */
+
+    time_t t_now = now();
+    String ts_now = format_timestamp(t_now);
+    if (last_timestamp != ts_now) {
+      last_timestamp = ts_now;
+      Serial.println(ts_now);
+      play_audio(ts_now);
+    }
+    
+  }
+}
+
+
+
+
+/*
 void digitalClockDisplay() {
   // digital clock display of the time
   Serial.println("");
@@ -383,5 +403,5 @@ void printDigits(int digits) {
     Serial.print('0');
   Serial.print(digits);
 }
-
+*/
 
